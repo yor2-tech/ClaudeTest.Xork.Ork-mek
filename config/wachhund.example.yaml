@@ -1,0 +1,36 @@
+# Kopieren nach config/wachhund.yaml und anpassen.
+# ${VARIABLE} wird aus der .env-Datei übernommen.
+
+mqtt:
+  host: mosquitto
+  port: 1883
+  benutzer: ${MQTT_USER}
+  passwort: ${MQTT_PASSWORD}
+  espresense_topic: espresense/devices
+
+frigate:
+  url: http://frigate:5000          # interne Adresse, nur im Docker-Netz erreichbar
+
+signal:
+  url: http://signal:8080
+  absender: ${SIGNAL_BOT_NUMMER}    # Nummer der Bot-SIM, z. B. +4915112345678
+  empfaenger:                       # wer die Alarme bekommt
+    - "+491701234567"
+    # - "+491709876543"
+
+alarm:
+  zonen: [grundstueck]              # Zonen aus frigate/config.yml, die Alarm auslösen
+  wartezeit_s: 15                   # kurz warten, ob sich ein Anhänger meldet
+  cooldown_s: 60                    # höchstens 1 Nachricht pro Kamera und Minute
+  kameranamen:                      # schönere Namen für die Nachricht
+    einfahrt: Einfahrt
+    garten: Garten
+  # link: https://192.168.178.10:8971/review   # optional: Link zur Aufnahme
+
+anwesenheit:
+  max_distanz_m: 8                  # Anhänger muss näher als das am Bluetooth-Empfänger sein
+  gueltig_s: 180                    # ... und innerhalb der letzten 3 Minuten gesehen worden sein
+  anhaenger:                        # ID aus ESPresense -> Name
+    "tag:mama": Mama
+    "tag:papa": Papa
+    # "iBeacon:e2c56db5-dffb-48d2-b060-d0f5a71096e0-1-1": Oma

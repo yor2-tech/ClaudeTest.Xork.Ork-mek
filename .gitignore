@@ -1,0 +1,6 @@
+.env
+data/
+config/wachhund.yaml
+mosquitto/passwd
+__pycache__/
+.pytest_cache/

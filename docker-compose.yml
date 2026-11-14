@@ -1,0 +1,52 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - "1883:1883"            # für die ESP32-Bluetooth-Empfänger im WLAN
+    volumes:
+      - ./mosquitto:/mosquitto/config
+      - ./data/mosquitto:/mosquitto/data
+
+  frigate:
+    image: ghcr.io/blakeblackshear/frigate:stable
+    restart: unless-stopped
+    shm_size: "512mb"
+    devices:
+      - /dev/dri/renderD128:/dev/dri/renderD128   # Intel-Grafik für die Erkennung
+    env_file: .env
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./frigate:/config
+      - ./data/frigate:/media/frigate               # Aufnahmen
+      - type: tmpfs
+        target: /tmp/cache
+        tmpfs:
+          size: 1000000000
+    ports:
+      - "8971:8971"            # Weboberfläche (mit Login): https://<mini-pc>:8971
+    depends_on:
+      - mosquitto
+
+  signal:
+    image: bbernhard/signal-cli-rest-api:latest
+    restart: unless-stopped
+    environment:
+      - MODE=json-rpc
+    ports:
+      - "127.0.0.1:8080:8080"  # nur lokal am Mini-PC erreichbar (für die Einrichtung)
+    volumes:
+      - ./data/signal:/home/.local/share/signal-cli
+
+  wachhund:
+    build: ./wachhund
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - WACHHUND_CONFIG=/config/wachhund.yaml
+    volumes:
+      - ./config:/config:ro
+    depends_on:
+      - mosquitto
+      - frigate
+      - signal
