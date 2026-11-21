@@ -1,4 +1,4 @@
-from wachhund import Anwesenheit, Ereignisfilter
+from wachhund import Anwesenheit, Ereignisfilter, lade_konfiguration
 
 
 class FalscheUhr:
@@ -64,3 +64,26 @@ def test_cooldown_pro_kamera():
     assert f.darf_alarmieren("garten")
     uhr.t += 61
     assert f.darf_alarmieren("einfahrt")
+
+
+def test_werte_aus_der_env_bleiben_text(tmp_path, monkeypatch):
+    monkeypatch.setenv("SIGNAL_BOT_NUMMER", "+4915112345678")
+    monkeypatch.setenv("MQTT_PASSWORD", "12345678")
+    monkeypatch.setenv("MQTT_USER", "a: b #c")
+    datei = tmp_path / "wachhund.yaml"
+    datei.write_text(
+        "mqtt:\n"
+        "  port: 1883\n"
+        "  benutzer: ${MQTT_USER}\n"
+        "  passwort: ${MQTT_PASSWORD}   # Kommentar\n"
+        "signal:\n"
+        "  absender: ${SIGNAL_BOT_NUMMER}\n"
+        "  empfaenger:\n"
+        "    - ${SIGNAL_BOT_NUMMER}\n",
+        encoding="utf-8")
+    cfg = lade_konfiguration(str(datei))
+    assert cfg["signal"]["absender"] == "+4915112345678"
+    assert cfg["signal"]["empfaenger"] == ["+4915112345678"]
+    assert cfg["mqtt"]["passwort"] == "12345678"
+    assert cfg["mqtt"]["benutzer"] == "a: b #c"
+    assert cfg["mqtt"]["port"] == 1883

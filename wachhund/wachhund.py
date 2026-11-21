@@ -233,10 +233,23 @@ class Wachhund:
         self.signal.sende(text, self.frigate.bild(ereignis_id, kamera))
 
 
+def _ersetze_variablen(wert):
+    """Ersetzt ${VARIABLE} in allen Textwerten durch Umgebungsvariablen."""
+    if isinstance(wert, str):
+        return os.path.expandvars(wert)
+    if isinstance(wert, dict):
+        return {k: _ersetze_variablen(v) for k, v in wert.items()}
+    if isinstance(wert, list):
+        return [_ersetze_variablen(v) for v in wert]
+    return wert
+
+
 def lade_konfiguration(pfad: str) -> dict:
     with open(pfad, encoding="utf-8") as f:
-        # ${VARIABLE} im Text wird durch Umgebungsvariablen ersetzt (für Passwörter)
-        return yaml.safe_load(os.path.expandvars(f.read()))
+        # Erst YAML lesen, dann ersetzen: so bleiben Werte aus der .env immer Text.
+        # Sonst würde aus "+4915112345678" oder dem Passwort "12345678" eine Zahl,
+        # und Zeichen wie "#" oder ":" im Passwort würden die Datei zerstören.
+        return _ersetze_variablen(yaml.safe_load(f))
 
 
 def main() -> None:

@@ -130,6 +130,13 @@ Alle Werte lassen sich in `config/wachhund.yaml` anpassen.
 **Gut zu wissen:**
 - Kommt jemand Bekanntes **zusammen mit** einer fremden Person, gibt es keinen Alarm.
   Der Anhänger sagt nur „jemand Bekanntes ist da“, nicht wer genau im Bild ist.
+- **Schlüssel nicht in der Nähe des Bluetooth-Empfängers aufhängen.** Hängt ein
+  Schlüsselbund mit Anhänger dauerhaft näher als 8 m am ESP32 (z. B. am Schlüsselbrett
+  neben der Haustür), gilt immer jemand als „bekannt“ und es gibt **gar keinen Alarm**,
+  auch nachts nicht. Den ESP32 dann weiter weg aufstellen oder `max_distanz_m` in
+  `config/wachhund.yaml` verkleinern. Zum Prüfen: Schlüssel an ihren Platz hängen und
+  im Log (`docker compose logs wachhund`) schauen, ob bei einem Testlauf übers
+  Grundstück „bekannt“ gemeldet wird.
 - Briefträger, Paketdienste usw. lösen Alarm aus. Das ist so gewollt. Aufgenommen wird
   trotzdem alles, ihr könnt es in Frigate nachsehen.
 - Die Kennung eines Anhängers ließe sich technisch kopieren. Für einen Alarm, den
