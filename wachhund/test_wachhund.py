@@ -1,4 +1,10 @@
-from wachhund import Anwesenheit, Ereignisfilter
+from pathlib import Path
+
+import pytest
+
+from wachhund import Anwesenheit, Ereignisfilter, Wachhund, lade_konfiguration
+
+BEISPIEL = str(Path(__file__).parent.parent / "config" / "wachhund.example.yaml")
 
 
 class FalscheUhr:
@@ -64,3 +70,30 @@ def test_cooldown_pro_kamera():
     assert f.darf_alarmieren("garten")
     uhr.t += 61
     assert f.darf_alarmieren("einfahrt")
+
+
+@pytest.mark.parametrize("passwort", ["123456", "geheim: 1", "@start", "ja", "a#b $x"])
+def test_konfiguration_uebernimmt_werte_aus_env_als_text(monkeypatch, passwort):
+    monkeypatch.setenv("MQTT_USER", "wachhund")
+    monkeypatch.setenv("MQTT_PASSWORD", passwort)
+    monkeypatch.setenv("SIGNAL_BOT_NUMMER", "+4915112345678")
+    cfg = lade_konfiguration(BEISPIEL)
+    assert cfg["mqtt"]["passwort"] == passwort
+    assert cfg["signal"]["absender"] == "+4915112345678"
+    Wachhund(cfg)  # Beispielkonfiguration ist gültig
+
+
+def test_fehlende_variable_wird_gemeldet(monkeypatch):
+    monkeypatch.delenv("MQTT_USER", raising=False)
+    with pytest.raises(SystemExit, match="MQTT_USER"):
+        lade_konfiguration(BEISPIEL)
+
+
+def test_nummer_ohne_anfuehrungszeichen_wird_gemeldet(monkeypatch, tmp_path):
+    for name in ("MQTT_USER", "MQTT_PASSWORD", "SIGNAL_BOT_NUMMER"):
+        monkeypatch.setenv(name, "+49151")
+    datei = tmp_path / "w.yaml"
+    datei.write_text(open(BEISPIEL, encoding="utf-8").read()
+                     .replace('"+491701234567"', "+491701234567"), encoding="utf-8")
+    with pytest.raises(SystemExit, match="Anführungszeichen"):
+        Wachhund(lade_konfiguration(str(datei)))

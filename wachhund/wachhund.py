@@ -15,6 +15,7 @@ import base64
 import json
 import logging
 import os
+import re
 import threading
 import time
 from datetime import datetime
@@ -166,7 +167,8 @@ class Wachhund:
         self.link: str | None = alarm.get("link")
         self.frigate = Frigate(cfg["frigate"]["url"])
         sig = cfg["signal"]
-        self.signal = Signal(sig["url"], sig["absender"], sig["empfaenger"])
+        self.signal = Signal(sig["url"], _nummer(sig["absender"]),
+                             [_nummer(n) for n in sig["empfaenger"]])
         self.espresense_prefix = cfg["mqtt"].get("espresense_topic", "espresense/devices")
 
     # --- MQTT ---------------------------------------------------------------
@@ -233,15 +235,44 @@ class Wachhund:
         self.signal.sende(text, self.frigate.bild(ereignis_id, kamera))
 
 
+_VARIABLE = re.compile(r"\$\{(\w+)\}")
+
+
+def _setze_variablen(wert):
+    """Ersetzt ${VARIABLE} durch Umgebungsvariablen (für Passwörter und Nummern).
+
+    Passiert erst NACH dem Einlesen des YAML, damit z. B. "+4915112345678" oder
+    "123456" Text bleiben und Passwörter mit Sonderzeichen das YAML nicht kaputt machen.
+    """
+    if isinstance(wert, dict):
+        return {k: _setze_variablen(v) for k, v in wert.items()}
+    if isinstance(wert, list):
+        return [_setze_variablen(v) for v in wert]
+    if isinstance(wert, str):
+        def ersetze(treffer: re.Match) -> str:
+            name = treffer.group(1)
+            if name not in os.environ:
+                raise SystemExit(f"Variable {name} fehlt – bitte in der .env-Datei eintragen")
+            return os.environ[name]
+        return _VARIABLE.sub(ersetze, wert)
+    return wert
+
+
+def _nummer(wert) -> str:
+    if not (isinstance(wert, str) and wert.startswith("+")):
+        raise SystemExit(f"Telefonnummer {wert!r}: bitte in Anführungszeichen und mit "
+                         'Ländervorwahl angeben, z. B. "+491701234567"')
+    return wert
+
+
 def lade_konfiguration(pfad: str) -> dict:
     with open(pfad, encoding="utf-8") as f:
-        # ${VARIABLE} im Text wird durch Umgebungsvariablen ersetzt (für Passwörter)
-        return yaml.safe_load(os.path.expandvars(f.read()))
+        return _setze_variablen(yaml.safe_load(f))
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Wachhund – Personenalarm per Signal")
-    parser.add_argument("--config", default=os.environ.get("WACHHUND_CONFIG", "/config/config.yaml"))
+    parser.add_argument("--config", default=os.environ.get("WACHHUND_CONFIG", "/config/wachhund.yaml"))
     parser.add_argument("--test", metavar="KAMERA",
                         help="Testnachricht mit aktuellem Bild dieser Kamera senden und beenden")
     parser.add_argument("-v", "--verbose", action="store_true")

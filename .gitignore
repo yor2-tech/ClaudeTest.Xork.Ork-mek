@@ -2,5 +2,8 @@
 data/
 config/wachhund.yaml
 mosquitto/passwd
+# Frigate legt Datenbank, Login-Schlüssel (.jwt_secret) usw. neben die Konfiguration
+frigate/*
+!frigate/config.yml
 __pycache__/
 .pytest_cache/

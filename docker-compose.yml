@@ -45,6 +45,7 @@ services:
     environment:
       - WACHHUND_CONFIG=/config/wachhund.yaml
     volumes:
+      - /etc/localtime:/etc/localtime:ro   # richtige Uhrzeit in der Nachricht
       - ./config:/config:ro
     depends_on:
       - mosquitto
